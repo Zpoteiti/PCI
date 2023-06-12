@@ -30,10 +30,10 @@ class AggregationConfig(Config):
 class Cockroach(Agent):
     config: AggregationConfig
 
-    s_noise = 0.2
+    s_noise = 0.1
     state = "wdr"
     join_time = 0
-    join_e = 0.5
+    join_e = 0.2
     leave_e = 0.001
 
     def move(self):
@@ -53,6 +53,12 @@ class Cockroach(Agent):
                 quotient = Vector2(a-x, b-y)
                 drift += quotient
         return drift
+    
+    # check if the agent is already in the site
+    def in_site(self, neighbours):
+        # !!!
+        pass
+
 
     # joining the group and return a random drift
     def join(self):
@@ -61,6 +67,12 @@ class Cockroach(Agent):
         # s_noise is the strong of the random drift
         # adding a random drift between (-s_noise, -s_noise) and (s_noise, s_noise) to the movement when joining the group
         drift = Vector2(random.random()*self.s_noise*2-self.s_noise, random.random()*self.s_noise*2-self.s_noise)
+        # when joining, the agent could hit obstacles, so we need to check if the agent is already the site
+        # !!!
+        # if self.in_site():
+        #     x = self.move[0]
+        #     y = self.move[1]
+        #     self.move = Vector2(-x, -y)
         # if join time is over the threshold, change state to still
         if self.join_time > self.config.max_join_time:
             self.state = "still"
@@ -94,7 +106,15 @@ class Cockroach(Agent):
     
     # decide if agent should join the group
     def if_join(self):
-        x = random.random()
+        # the thing with this join_e is that the agent will always join the group when it is on the site
+        # since the obstacle is not a thin line, and it's thickness is large enough to activate this
+        # decision function multiple time, so the agent will eventually join the group
+
+        # should be fix when implement proper decision funciton
+
+        # random number between 0 and 1
+        x = random.uniform(0, 1)
+        print(x, self.join_e)
         if x < self.join_e:
             return True
         else:
@@ -121,13 +141,6 @@ class Cockroach(Agent):
             # when wandering and hit a obstacle
             if self.on_site() and self.state == "wdr" and self.if_join():
                 self.state = "join"
-            
-            # when joining and hit a obstacle，reflect
-            # !!!
-            if self.on_site() and self.state == "join":
-                x = self.move[0]
-                y = self.move[1]
-                self.move = Vector2(-x, -y)
 
             # when still but want to leave
             if self.state == 'still' and self.if_leave():
