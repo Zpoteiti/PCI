@@ -17,6 +17,7 @@ class AggregationConfig(Config):
     separation_weight: float = 0.5
     avoid_crash_weight: float = 1
     safe_distance: float = 10
+    max_velocity: float = 1
 
     delta_time: float = 3
 
@@ -29,12 +30,11 @@ class AggregationConfig(Config):
 class Cockroach(Agent):
     config: AggregationConfig
 
-    # def __init__(self):
+    s_noise = 0.2
     state = "wdr"
     join_time = 0
-    join_e = 0.8
+    join_e = 0.5
     leave_e = 0.001
-    #nei_still = 0
 
     def move(self):
         return self.move
@@ -58,8 +58,9 @@ class Cockroach(Agent):
     def join(self):
         self.change_image(1)
         self.join_time += 1
-        # adding a random drift to the movement when joining the group
-        drift = Vector2(random.random()*0.1, random.random()*0.1)
+        # s_noise is the strong of the random drift
+        # adding a random drift between (-s_noise, -s_noise) and (s_noise, s_noise) to the movement when joining the group
+        drift = Vector2(random.random()*self.s_noise*2-self.s_noise, random.random()*self.s_noise*2-self.s_noise)
         # if join time is over the threshold, change state to still
         if self.join_time > self.config.max_join_time:
             self.state = "still"
@@ -70,8 +71,8 @@ class Cockroach(Agent):
     # leaving the group and return a random drift
     def leave(self):
         self.change_image(2)
-        # adding a random drift to the movement when leaving the group
-        drift = Vector2(random.random()*0.1, random.random()*0.1)
+        # adding a random drift between (-s_noise, -s_noise) and (s_noise, s_noise) to the movement when leaving the group
+        drift = Vector2(random.random()*self.s_noise*2-self.s_noise, random.random()*self.s_noise*2-self.s_noise)
         # if the agent is on the site, change state to wandering, in order to prevent the agent from stuck in group canter
         if self.on_site():
             self.state = "wdr"
@@ -81,7 +82,8 @@ class Cockroach(Agent):
     def wandering(self):
         # random drift
         self.change_image(0)
-        drift = Vector2(random.random()*0.5, random.random()*0.5)
+        # adding a random drift between (-s_noise, -s_noise) and (s_noise, s_noise) to the movement when wandering
+        drift = Vector2(random.random()*self.s_noise*2-self.s_noise, random.random()*self.s_noise*2-self.s_noise)
         return drift
 
     # stay at the same position
@@ -102,12 +104,11 @@ class Cockroach(Agent):
     def if_leave(self):
         x = random.random()
         if x < self.leave_e:
+            # give the agent a random velocity bewtween (-1,-1) and (1,1) to leave the group
+            self.move = Vector2(random.random()*2-1, random.random()*2-1)
             return True
         else:
             return False
-
-
-
 
 
     def change_position(self):
@@ -115,30 +116,42 @@ class Cockroach(Agent):
             self.there_is_no_escape()
             neighbors = list(self.in_proximity_accuracy())
             c = self.obstacle_intersections()
+            drift = Vector2(0,0)
 
             # when wandering and hit a obstacle
             if self.on_site() and self.state == "wdr" and self.if_join():
                 self.state = "join"
             
+            # when joining and hit a obstacle，reflect
+            # !!!
+            if self.on_site() and self.state == "join":
+                x = self.move[0]
+                y = self.move[1]
+                self.move = Vector2(-x, -y)
+
             # when still but want to leave
             if self.state == 'still' and self.if_leave():
                 self.state = "leave"
             
             # state decided and change position
             if self.state == "join":
-                adj = self.join()
+                drift = self.join()
             elif self.state == "leave":
-                adj = self.leave()
+                drift = self.leave()
             elif self.state == "wdr":
-                adj = self.wandering()
+                drift = self.wandering()
             elif self.state == "still":
-                adj = self.still()
-                
-
-            # move
-            adj += self.separetion(neighbors)
-            self.pos += self.move + adj
+                drift = self.still()
             
+            self.move += drift
+            
+            # make sure agents won't move too fast
+            if self.move.length() > self.config.max_velocity:
+                self.move = self.move.normalize()*self.config.max_velocity
+                    
+            # move
+            self.pos += self.move + self.separetion(neighbors)
+                
 
 
 class Selection(Enum):
