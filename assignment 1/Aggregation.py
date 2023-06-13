@@ -10,14 +10,13 @@ from vi.config import Config, dataclass, deserialize
 
 @deserialize
 @dataclass
-class AggregationConfig(Config):
-    max_join_time: float = 101
+class FlockingConfig(Config):
+    join_time: float = 50
     alignment_weight :float = 1
     cohesion_weight: float = 0.5
     separation_weight: float = 0.5
     avoid_crash_weight: float = 1
-    safe_distance: float = 10
-    max_velocity: float = 1
+    total_population: int = 50
 
     delta_time: float = 3
 
@@ -27,144 +26,112 @@ class AggregationConfig(Config):
         return (self.alignment_weight, self.cohesion_weight, self.separation_weight)
 
 
-class Cockroach(Agent):
-    config: AggregationConfig
+class Bird(Agent):
+    config: FlockingConfig
 
-    s_noise = 0.1
+    # def __init__(self):
     state = "wdr"
     join_time = 0
-    join_e = 0.2
-    leave_e = 0.001
+    leave_time = 0
+    join_e = 0.8
+    leave_cross = True
+    first_cross = True
+
 
     def move(self):
         return self.move
 
-    def separetion(self, neighbors):
-        # Separation to avoid overlapping
-        pos = [agent.pos for agent, len in neighbors]
-        drift = Vector2(0,0)
-        for neighbor in pos:
-            diff = self.pos - neighbor
-            if diff.length() < self.config.safe_distance:
-                a = diff[0]
-                b = diff[1]
-                x = a * diff.length()/self.config.safe_distance
-                y = b * diff.length()/self.config.safe_distance
-                quotient = Vector2(a-x, b-y)
-                drift += quotient
-        return drift
-    
-    # check if the agent is already in the site
-    def in_site(self, neighbours):
-        # !!!
-        pass
+    def to_join(self,adj):
+        x = random.random()
+        if x < self.join_e:
+            self.move = -1 * self.move  # +Vector2(2,2)
+            adj += self.move * 3
+            # print("wdr not joining.")
+        else:
+            self.state = "join"
 
+        return adj
 
-    # joining the group and return a random drift
-    def join(self):
-        self.change_image(1)
+    def join_state(self,adj):
         self.join_time += 1
-        # s_noise is the strong of the random drift
-        # adding a random drift between (-s_noise, -s_noise) and (s_noise, s_noise) to the movement when joining the group
-        drift = Vector2(random.random()*self.s_noise*2-self.s_noise, random.random()*self.s_noise*2-self.s_noise)
-        # when joining, the agent could hit obstacles, so we need to check if the agent is already the site
-        # !!!
-        # if self.in_site():
-        #     x = self.move[0]
-        #     y = self.move[1]
-        #     self.move = Vector2(-x, -y)
-        # if join time is over the threshold, change state to still
-        if self.join_time > self.config.max_join_time:
+        if self.on_site():
+            self.move = -1 * self.move
+            adj += self.move.normalize() * 5
+            print("adj ", adj)
+        if self.join_time > self.config.join_time:
             self.state = "still"
             self.join_time = 0
-        return drift
-
-        
-    # leaving the group and return a random drift
-    def leave(self):
-        self.change_image(2)
-        # adding a random drift between (-s_noise, -s_noise) and (s_noise, s_noise) to the movement when leaving the group
-        drift = Vector2(random.random()*self.s_noise*2-self.s_noise, random.random()*self.s_noise*2-self.s_noise)
-        # if the agent is on the site, change state to wandering, in order to prevent the agent from stuck in group canter
-        if self.on_site():
-            self.state = "wdr"
-        return drift
-    
-    # wandering around
-    def wandering(self):
-        # random drift
-        self.change_image(0)
-        # adding a random drift between (-s_noise, -s_noise) and (s_noise, s_noise) to the movement when wandering
-        drift = Vector2(random.random()*self.s_noise*2-self.s_noise, random.random()*self.s_noise*2-self.s_noise)
-        return drift
-
-    # stay at the same position
-    def still(self):
-        self.change_image(3)
-        self.move = Vector2(0,0)
-        return Vector2(0,0)
-    
-    # decide if agent should join the group
-    def if_join(self):
-        # the thing with this join_e is that the agent will always join the group when it is on the site
-        # since the obstacle is not a thin line, and it's thickness is large enough to activate this
-        # decision function multiple time, so the agent will eventually join the group
-
-        # should be fix when implement proper decision funciton
-
-        # random number between 0 and 1
-        x = random.uniform(0, 1)
-        print(x, self.join_e)
-        if x < self.join_e:
-            return True
         else:
-            return False
-    
-    # decide if agent should leave the group
-    def if_leave(self):
-        x = random.random()
-        if x < self.leave_e:
-            # give the agent a random velocity bewtween (-1,-1) and (1,1) to leave the group
-            self.move = Vector2(random.random()*2-1, random.random()*2-1)
-            return True
-        else:
-            return False
+            self.pos += self.move + adj
+            print(self.pos)
+
+    def to_leave(self):
+            neighbors = list(self.in_proximity_accuracy())
+            if len(neighbors) > 0:
+                still_num = 0
+                for agent, distance in neighbors:
+                    if agent.state == "still":
+                        still_num += 1
+                still_ratio = still_num/len(neighbors)
+                neighbor_ratio = len(neighbors)/self.config.total_population
+                leave_e = (still_ratio + neighbor_ratio)/2
+            else:
+                leave_e = 0.3
+
+            x = random.random()
+            if x > leave_e:
+                self.state == "leave"
+
+
+    def leave_state(self):
+            self.leave_time += 1
+            if self.on_site() and self.leave_cross:
+                self.leave_cross = False
+            self.pos += self.move
 
 
     def change_position(self):
             # Pac-man-style teleport to the other end of the screen when trying to escape
             self.there_is_no_escape()
-            neighbors = list(self.in_proximity_accuracy())
-            c = self.obstacle_intersections()
-            drift = Vector2(0,0)
 
-            # when wandering and hit a obstacle
-            if self.on_site() and self.state == "wdr" and self.if_join():
-                self.state = "join"
 
-            # when still but want to leave
-            if self.state == 'still' and self.if_leave():
-                self.state = "leave"
-            
-            # state decided and change position
+
+            #c = self.obstacle_intersections()
+
+            adj = Vector2(0,0)
+            leave_e = 0.001
+            #if self.state != "still":
+
+
+            if not(self.first_cross) and self.on_site() and self.state == "wdr":
+                adj = self.to_join(adj)
+
             if self.state == "join":
-                drift = self.join()
-            elif self.state == "leave":
-                drift = self.leave()
-            elif self.state == "wdr":
-                drift = self.wandering()
-            elif self.state == "still":
-                drift = self.still()
-            
-            self.move += drift
-            
-            # make sure agents won't move too fast
-            if self.move.length() > self.config.max_velocity:
-                self.move = self.move.normalize()*self.config.max_velocity
-                    
-            # move
-            self.pos += self.move + self.separetion(neighbors)
-                
+                    self.join_state(adj)
+
+            if self.state == "still":
+                    self.to_leave()
+
+            if self.state == "leave":
+                    self.leave_state()
+            #print(self.join_time)
+            #print(self.state)
+
+            if self.first_cross and self.on_site():
+                self.first_cross = False
+                adj += self.move*10
+
+            if self.state == "wdr":
+                self.pos += self.move + adj*3
+            # if self.state == "join":
+            #     self.pos += self.move
+
+
+
+
+
+
+                #END CODE -----------------
 
 
 class Selection(Enum):
@@ -173,9 +140,9 @@ class Selection(Enum):
     SEPARATION = auto()
 
 
-class AggregationLive(Simulation):
+class FlockingLive(Simulation):
     selection: Selection = Selection.ALIGNMENT
-    config: AggregationConfig
+    config: FlockingConfig
     def handle_event(self, by: float):
         if self.selection == Selection.ALIGNMENT:
            self.config.alignment_weight += by
@@ -201,11 +168,12 @@ class AggregationLive(Simulation):
                     self.selection = Selection.SEPARATION
 
         a, c, s = self.config.weights()
+        #print(f"A: {a:.1f} - C: {c:.1f} - S: {s:.1f}")
 
 
 (
-    AggregationLive(
-        AggregationConfig(
+    FlockingLive(
+        FlockingConfig(
             image_rotation=True,
             movement_speed=1,
             radius=50,
@@ -214,6 +182,6 @@ class AggregationLive(Simulation):
     )
     .spawn_site("images/bubble-full.png", x=350, y=350)
     #.spawn_obstacle("C:/Users/PTFaust/Desktop/images/bubble-full.png", 350, 350)
-    .batch_spawn_agents(50, Cockroach, images=["images/white.png", 'images/red.png', 'images/blue.png', 'images/green.png'])
+    .batch_spawn_agents(50, Bird, images=["images/bird.png"])
     .run()
 )
