@@ -1,6 +1,5 @@
 import random
 from enum import Enum, auto
-
 import pygame as pg
 from pygame.math import Vector2
 from vi import Agent, Simulation
@@ -11,33 +10,20 @@ from vi.config import Config, dataclass, deserialize
 @deserialize
 @dataclass
 class AggregationConfig(Config):
-    max_join_time: float = 101
-    alignment_weight :float = 1
-    cohesion_weight: float = 0.5
-    separation_weight: float = 0.5
-    avoid_crash_weight: float = 1
-    safe_distance: float = 10
-    max_velocity: float = 1
-
-    delta_time: float = 3
-
-    mass: int = 20
-
-    def weights(self) -> tuple[float, float, float]:
-        return (self.alignment_weight, self.cohesion_weight, self.separation_weight)
+    pass
 
 
 class Cockroach(Agent):
     config: AggregationConfig
 
+    max_join_time: float = 101
+    safe_distance: float = 10
+    max_velocity: float = 1
     s_noise = 0.1
     state = "wdr"
     join_time = 0
     join_e = 0.2
     leave_e = 0.001
-
-    def move(self):
-        return self.move
 
     def separetion(self, neighbors):
         # Separation to avoid overlapping
@@ -45,20 +31,14 @@ class Cockroach(Agent):
         drift = Vector2(0,0)
         for neighbor in pos:
             diff = self.pos - neighbor
-            if diff.length() < self.config.safe_distance:
+            if diff.length() < self.safe_distance:
                 a = diff[0]
                 b = diff[1]
-                x = a * diff.length()/self.config.safe_distance
-                y = b * diff.length()/self.config.safe_distance
+                x = a * diff.length()/self.safe_distance
+                y = b * diff.length()/self.safe_distance
                 quotient = Vector2(a-x, b-y)
                 drift += quotient
         return drift
-    
-    # check if the agent is already in the site
-    def in_site(self, neighbours):
-        # !!!
-        pass
-
 
     # joining the group and return a random drift
     def join(self):
@@ -69,7 +49,7 @@ class Cockroach(Agent):
         # when joining, the agent could wander outside of the site. if the agent is outside of the site, it will bounce back
         if not self.on_site():
             self.move = Vector2(-self.move[0], -self.move[1])
-        if self.join_time > self.config.max_join_time:
+        if self.join_time > self.max_join_time:
             self.state = "still"
             self.join_time = 0
         return drift
@@ -102,7 +82,6 @@ class Cockroach(Agent):
     # decide if agent should join the group
     def if_join(self):
         x = random.uniform(0, 1)
-        print(x, self.join_e)
         if x < self.join_e:
             return True
         else:
@@ -150,54 +129,17 @@ class Cockroach(Agent):
             self.move += drift
             
             # make sure agents won't move too fast
-            if self.move.length() > self.config.max_velocity:
-                self.move = self.move.normalize()*self.config.max_velocity
+            if self.move.length() > self.max_velocity:
+                self.move = self.move.normalize()*self.max_velocity
                     
             # move
             self.pos += self.move + self.separetion(neighbors)
-                
-
-
-class Selection(Enum):
-    ALIGNMENT = auto()
-    COHESION = auto()
-    SEPARATION = auto()
-
-
-class AggregationLive(Simulation):
-    selection: Selection = Selection.ALIGNMENT
-    config: AggregationConfig
-    def handle_event(self, by: float):
-        if self.selection == Selection.ALIGNMENT:
-           self.config.alignment_weight += by
-        elif self.selection == Selection.COHESION:
-            self.config.cohesion_weight += by
-        elif self.selection == Selection.SEPARATION:
-            self.config.separation_weight += by
-
-    def before_update(self):
-        super().before_update()
-
-        for event in pg.event.get():
-            if event.type == pg.KEYDOWN:
-                if event.key == pg.K_UP:
-                    self.handle_event(by=0.1)
-                elif event.key == pg.K_DOWN:
-                    self.handle_event(by=-0.1)
-                elif event.key == pg.K_1:
-                    self.selection = Selection.ALIGNMENT
-                elif event.key == pg.K_2:
-                    self.selection = Selection.COHESION
-                elif event.key == pg.K_3:
-                    self.selection = Selection.SEPARATION
-
-        a, c, s = self.config.weights()
 
 
 (
-    AggregationLive(
+    Simulation(
         AggregationConfig(
-            image_rotation=True,
+            image_rotation=False,
             movement_speed=1,
             radius=50,
             seed=1,
