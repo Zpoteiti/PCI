@@ -6,12 +6,8 @@ from vi import Agent, Simulation
 import math
 from vi.config import Config, dataclass, deserialize
 
-
-@deserialize
-@dataclass
 class AggregationConfig(Config):
     pass
-
 
 class Cockroach(Agent):
     config: AggregationConfig
@@ -19,7 +15,7 @@ class Cockroach(Agent):
     max_join_time: float = 101
     safe_distance: float = 10
     max_velocity: float = 1
-    s_noise = 0.1
+    s_noise = 0.01
     state = "wdr"
     join_time = 0
     join_e = 0.2
@@ -54,7 +50,6 @@ class Cockroach(Agent):
             self.join_time = 0
         return drift
 
-        
     # leaving the group and return a random drift
     def leave(self):
         self.change_image(2)
@@ -99,18 +94,19 @@ class Cockroach(Agent):
 
 
     def change_position(self):
-            # Pac-man-style teleport to the other end of the screen when trying to escape
-            self.there_is_no_escape()
             neighbors = list(self.in_proximity_accuracy())
-            c = self.obstacle_intersections()
             drift = Vector2(0,0)
 
-            # when wandering and hit a obstacle
+            # # when wdr and hit obstacle(edge of playground)
+            # if self.on_obstacle() and self.state == "wdr":
+            #     self.move = Vector2(-self.move[0], -self.move[1])
+
+            # when wandering and hit sites
             if self.on_site() and self.state == "wdr" and self.if_join():
                 self.state = "join"
             # if do not want to join, then bounce back
             elif self.on_site() and self.state == "wdr" and not self.if_join():
-                self.move = Vector2(-self.move[0], -self.move[1])                
+                pass# self.move = Vector2(-self.move[0], -self.move[1])                
 
             # when still but want to leave
             if self.state == 'still' and self.if_leave():
@@ -135,18 +131,23 @@ class Cockroach(Agent):
             # move
             self.pos += self.move + self.separetion(neighbors)
 
-
 (
     Simulation(
         AggregationConfig(
             image_rotation=False,
+            visualise_chunks=False,
             movement_speed=1,
             radius=50,
-            seed=1,
-        )
+            seed=1)
     )
-    .spawn_site("images/triangle@50px.png", x=85, y=75)#42.5,37.5
-    .spawn_site("images/triangle@200px.png", x=665, y=675) # 707.5, 717.5
+    # spawn screen's edge
+    .spawn_obstacle("images/obstacle.png", x=375, y=375)   
+    # spawn sites
+    .spawn_site("images/triangle@50px.png", x=100, y=100)
+    .spawn_site("images/triangle@200px.png", x=600, y=600)
+    # spawn agents
     .batch_spawn_agents(50, Cockroach, images=["images/white.png", 'images/red.png', 'images/blue.png', 'images/green.png'])
+    
+    # run simulation
     .run()
 )

@@ -110,8 +110,6 @@ class Bird(Agent):
 
             if self.state == "leave":
                     self.leave_state()
-            #print(self.join_time)
-            #print(self.state)
 
             if self.first_cross and self.on_site():
                 self.first_cross = False
