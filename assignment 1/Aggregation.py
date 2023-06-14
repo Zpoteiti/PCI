@@ -97,16 +97,21 @@ class Cockroach(Agent):
             neighbors = list(self.in_proximity_accuracy())
             drift = Vector2(0,0)
 
-            # # when wdr and hit obstacle(edge of playground)
-            # if self.on_obstacle() and self.state == "wdr":
-            #     self.move = Vector2(-self.move[0], -self.move[1])
+            # Obstacle Avoidance
+            obstacle_hit = pg.sprite.spritecollideany(self, self._obstacles, pg.sprite.collide_mask)  # type: ignore
+            collision = bool(obstacle_hit)
+
+            # Reverse direction when colliding with an obstacle.
+            if collision:
+                self.move.rotate_ip(180)
+            
 
             # when wandering and hit sites
             if self.on_site() and self.state == "wdr" and self.if_join():
                 self.state = "join"
             # if do not want to join, then bounce back
             elif self.on_site() and self.state == "wdr" and not self.if_join():
-                pass# self.move = Vector2(-self.move[0], -self.move[1])                
+                self.move = Vector2(-self.move[0], -self.move[1])                
 
             # when still but want to leave
             if self.state == 'still' and self.if_leave():
