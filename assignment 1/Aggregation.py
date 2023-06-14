@@ -13,13 +13,15 @@ class Cockroach(Agent):
     config: AggregationConfig
 
     max_join_time: float = 101
-    safe_distance: float = 10
-    max_velocity: float = 1
-    s_noise = 0.01
+    safe_distance: float = 5
+    max_velocity: float = 5
+    s_noise = 0.3
     state = "wdr"
     join_time = 0
     join_e = 0.2
-    leave_e = 0.001
+    join_max = 0.8
+    leave_chance = 0
+    patience = 200
 
     def separetion(self, neighbors):
         # Separation to avoid overlapping
@@ -76,22 +78,81 @@ class Cockroach(Agent):
     
     # decide if agent should join the group
     def if_join(self):
-        x = random.uniform(0, 1)
-        if x < self.join_e:
+        # x is the calculated probability of joining the group
+        x = 0
+        # count number of neighbours with state 'still'
+        num_s = 0
+
+        for agent, len in self.in_proximity_accuracy():
+            if agent.state == 'still':
+                num_s += 1
+
+
+        # probability of join is highly influenced by the number 
+        # of neighbors with state 'still' more neighbors with 
+        # state 'still', lower probability of joining
+        if num_s == 0:
+            x = self.join_max
+        else:
+            x = self.join_max * 1/num_s
+
+        # make a random number between 0 and 1
+        y = random.random()
+        # if y is smaller than x, then join
+        if y < x:
             return True
         else:
             return False
     
-    # decide if agent should leave the group
-    def if_leave(self):
-        x = random.random()
-        if x < self.leave_e:
-            # give the agent a random velocity bewtween (-1,-1) and (1,1) to leave the group
-            self.move = Vector2(random.random()*2-1, random.random()*2-1)
+    # probability of leave increase overtime
+    # if sees a neighbour with state 'join', reduce probability of leaving
+    # if sees a neighbour with state 'leave', highly increase probability of leaving
+    # 1/(number of neighbours with state 'still') will be the scaler of the probability of leaving
+    # which means more neighbours with state 'still', lower probability of leaving
+    # if get crashed out of the site, then start wandering
+    def if_leave(self): 
+        # x is the calculated additonal probability of leaving the group
+        x = 0
+        # count number of neighbours with state 'still'
+        num_s = 0
+        for agent, len in self.in_proximity_accuracy():
+            if agent.state == 'still':
+                num_s += 1
+        # count number of neighbours with state 'join'
+        num_j = 0
+        for agent, len in self.in_proximity_accuracy():
+            if agent.state == 'join':
+                num_s += 1
+
+        # count number of neighbours with state 'leave'
+        num_l = 0
+        for agent, len in self.in_proximity_accuracy():
+            if agent.state == 'leave':
+                num_s += 1
+
+        if not self.on_site():
+            self.state = 'wdr'
+            self.leave_chance = 0
+            return False
+
+        # if sees a neighbour with state 'join', reduce probability of leaving
+        if num_j > 0:
+            x -= num_j
+        # if sees a neighbour with state 'leave', increase probability of leaving
+        if num_l > 0:
+            x += num_l
+        # number of neighbours with state 'still' will be the scaler of the probability of leaving
+        # which means more neighbours with state 'still', lower probability of leaving
+        if num_s > 0:
+            x = x * 1/num_s
+
+        # make a random number between 0 and 1
+        y = random.random()
+        # if y is smaller than x, then leave
+        if y < x:
             return True
         else:
             return False
-
 
     def change_position(self):
             neighbors = list(self.in_proximity_accuracy())
@@ -103,7 +164,7 @@ class Cockroach(Agent):
 
             # Reverse direction when colliding with an obstacle.
             if collision:
-                self.move.rotate_ip(180)
+                self.move.rotate_ip(90)
             
 
             # when wandering and hit sites
