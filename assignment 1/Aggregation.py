@@ -29,7 +29,14 @@ class FlockingConfig(Config):
 class Bird(Agent):
     config: FlockingConfig
 
+<<<<<<< Updated upstream
     # def __init__(self):
+=======
+    max_join_time: float = 101
+    safe_distance: float = 5
+    max_velocity: float = 10
+    s_noise = 0.3
+>>>>>>> Stashed changes
     state = "wdr"
     join_time = 0
     leave_time = 0
@@ -54,11 +61,23 @@ class Bird(Agent):
 
     def join_state(self,adj):
         self.join_time += 1
+<<<<<<< Updated upstream
         if self.on_site():
             self.move = -1 * self.move
             adj += self.move.normalize() * 5
             print("adj ", adj)
         if self.join_time > self.config.join_time:
+=======
+        # s_noise is the strong of the random drift
+        # drift = Vector2(random.random()*self.s_noise*2-self.s_noise, random.random()*self.s_noise*2-self.s_noise)
+        # when joining, the agent could wander outside of the site. if the agent is outside of the site, it will bounce back
+        # if not self.on_site():
+        #     self.move = Vector2(-self.move[0], -self.move[1])
+
+        drift = -0.5*self.move
+
+        if self.move.length() > self.max_join_time:
+>>>>>>> Stashed changes
             self.state = "still"
             self.join_time = 0
         else:
@@ -91,6 +110,7 @@ class Bird(Agent):
 
 
     def change_position(self):
+<<<<<<< Updated upstream
             # Pac-man-style teleport to the other end of the screen when trying to escape
             self.there_is_no_escape()
 
@@ -170,6 +190,51 @@ class FlockingLive(Simulation):
         a, c, s = self.config.weights()
         #print(f"A: {a:.1f} - C: {c:.1f} - S: {s:.1f}")
 
+=======
+            neighbors = list(self.in_proximity_accuracy())
+            drift = Vector2(0,0)
+
+
+            self.there_is_no_escape()
+            # Obstacle Avoidance
+            obstacle_hit = pg.sprite.spritecollideany(self, self._obstacles, pg.sprite.collide_mask)  # type: ignore
+            collision = bool(obstacle_hit)
+
+            # Reverse direction when colliding with an obstacle.
+            if collision:
+                self.move.rotate_ip(90)
+            
+
+            # when wandering and hit sites
+            if self.on_site() and self.state == "wdr": #and self.if_join():
+                self.state = "join"
+            # if do not want to join, then bounce back
+            # elif self.on_site() and self.state == "wdr" and not self.if_join():
+            #     self.move = Vector2(-self.move[0], -self.move[1])
+
+            # when still but want to leave
+            # if self.state == 'still' and self.if_leave():
+            #     self.state = "leave"
+            
+            # state decided and change position
+            if self.state == "join":
+                drift = self.join()
+            elif self.state == "leave":
+                drift = self.leave()
+            elif self.state == "wdr":
+                drift = self.wandering()
+            elif self.state == "still":
+                drift = self.still()
+            
+            # self.move += drift
+            
+            # make sure agents won't move too fast
+            if self.move.length() > self.max_velocity:
+                self.move = self.move.normalize()*self.max_velocity
+                    
+            # move
+            self.pos += self.move + self.separetion(neighbors) + drift
+>>>>>>> Stashed changes
 
 (
     FlockingLive(
