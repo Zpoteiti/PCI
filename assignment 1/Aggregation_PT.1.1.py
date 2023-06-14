@@ -7,7 +7,9 @@ import math
 from vi.config import Config, dataclass, deserialize
 
 class AggregationConfig(Config):
-    pass
+    site1_num = 0
+    site2_num = 0
+    time = 0
 
 class Cockroach(Agent):
     config: AggregationConfig
@@ -24,6 +26,8 @@ class Cockroach(Agent):
     join_max = 0.8
     leave_chance = 0
     patience = 200
+    site_change = False
+    site_num = 0
 
     def separetion(self, neighbors):
         # Separation to avoid overlapping
@@ -222,7 +226,7 @@ class Cockroach(Agent):
 
 
         # make a random number between 0 and 1
-        print(x)
+        #print(x)
         y = random.random()
         # if y is smaller than x, then leave
         if y < x:
@@ -230,7 +234,37 @@ class Cockroach(Agent):
         else:
             return False
 
+    def count(self):
+        with open("test.txt", "a") as f:
+            f.write(f"{self.config.site1_num},{self.config.site2_num},{self.config.time/50}\n")
+
     def change_position(self):
+            self.config.time += 1
+            #print(self.state)
+            #print(self.site_change)
+            if self.on_site() and not(self.site_change) and self.state == "still" :
+                self.site_change = True
+
+                site_id = self.on_site_id()
+                if site_id == 0:
+                    self.config.site1_num += 1
+                    self.site_num = 1
+                elif site_id == 1:
+                    self.config.site2_num += 1
+                    self.site_num = 2
+                print("+1")
+                self.count()
+            if not(self.on_site()) and self.site_change: #and self.state == "leave":
+                self.site_change = False
+                if self.site_num == 1:
+                    self.config.site1_num -= 1
+                    self.site_num = 0
+                elif self.site_num == 2:
+                    self.config.site2_num -= 1
+                    self.site_num = 0
+                print("-1")
+                self.count()
+
             neighbors = list(self.in_proximity_accuracy())
             drift = Vector2(0,0)
 
@@ -267,6 +301,9 @@ class Cockroach(Agent):
                 drift = self.still()
             
             # self.move += drift
+
+
+
             
             # make sure agents won't move too fast
             if self.move.length() > self.max_velocity:
