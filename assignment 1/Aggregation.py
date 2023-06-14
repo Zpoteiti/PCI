@@ -112,7 +112,7 @@ class Cockroach(Agent):
     # if get crashed out of the site, then start wandering
     def if_leave(self): 
         # x is the calculated additonal probability of leaving the group
-        x = 0
+        x = 0.0001
         # count number of neighbours with state 'still'
         num_s = 0
         for agent, len in self.in_proximity_accuracy():
@@ -137,19 +137,19 @@ class Cockroach(Agent):
 
         # if sees a neighbour with state 'join', reduce probability of leaving
         if num_j > 0:
-            x -= num_j
+            x -= num_j*0.3
         # if sees a neighbour with state 'leave', increase probability of leaving
         if num_l > 0:
-            x += num_l
-        # number of neighbours with state 'still' will be the scaler of the probability of leaving
-        # which means more neighbours with state 'still', lower probability of leaving
-        if num_s > 0:
-            x = x * 1/num_s
+            x += num_l*0.7
+
+        # add the additional probability to the base probability
+        self.leave_chance += x
 
         # make a random number between 0 and 1
         y = random.random()
         # if y is smaller than x, then leave
-        if y < x:
+        if y < self.leave_chance/(num_s+1):
+            self.leave_chance = 0
             return True
         else:
             return False
