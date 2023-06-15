@@ -14,14 +14,12 @@ class Cockroach(Agent):
 
     max_join_time: float = 101
     safe_distance: float = 5
-    max_velocity: float = 5
+    max_velocity: float = 1
     s_noise = 0.3
     state = "wdr"
     join_time = 0
-    join_e = 0.2
-    join_max = 0.8
+    join_max = 0.6
     leave_chance = 0
-    patience = 200
 
     def separetion(self, neighbors):
         # Separation to avoid overlapping
@@ -164,7 +162,7 @@ class Cockroach(Agent):
 
             # Reverse direction when colliding with an obstacle.
             if collision:
-                self.move.rotate_ip(90)
+                self.move.rotate_ip(180)
             
 
             # when wandering and hit sites
