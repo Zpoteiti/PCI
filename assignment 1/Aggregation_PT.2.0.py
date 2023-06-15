@@ -15,10 +15,10 @@ class Cockroach(Agent):
     config: AggregationConfig
 
     max_join_time: float = 101
-    max_still_time: float = 500
+    max_still_time: float = 800
     safe_distance: float = 5
     max_velocity: float = 50
-    s_noise = 0.3
+    s_noise = 0
     state = "wdr"
     join_time = 0
     still_time = 0
@@ -54,10 +54,11 @@ class Cockroach(Agent):
         # when joining, the agent could wander outside of the site. if the agent is outside of the site, it will bounce back
         # if not self.on_site():
         #     self.move = Vector2(-self.move[0], -self.move[1])
-        num_js = 0
-        for agent, lenth in neighbors:
+        list_js = []
+        for agent, length in neighbors:
             if agent.state == "still" or agent.state == "join":
-                num_js += 1
+                list_js.append(agent)
+        neighbors = list_js
         if len(neighbors) > 0:
             debuff = 1/len(neighbors)
         else:
@@ -65,13 +66,14 @@ class Cockroach(Agent):
 
         buff = self.join_time / 100
         #当agent聚集时，new agent难以从聚集处进入site
-        drift = -0.7*self.move - self.move * (debuff * 5 - buff)
+        drift = -0.7*self.move - self.move * (debuff * 3 - buff)
+        # if there's more still and join neighbors less speed it gets
         if drift.length() > (self.move * -1).length():
             drift = self.move * -0.7
-        if len(neighbors) > 5 and self.move.length() < 0.01:
+        if len(neighbors) > 4 and self.join_time > self.max_join_time - 10 * len(neighbors):
             self.state = "still"
             self.join_time = 0
-        if len(neighbors) < 5 and self.join_time > self.max_join_time:
+        if len(neighbors) < 4 and self.join_time > self.max_join_time:
             self.state = "still"
             self.join_time = 0
 
@@ -83,7 +85,7 @@ class Cockroach(Agent):
 
         # adding a random drift between (-s_noise, -s_noise) and (s_noise, s_noise) to the movement when leaving the group
         if self.move.length() < self.config.movement_speed*0.5:
-            self.move = Vector2(random.random()*self.s_noise*2-self.s_noise, random.random()*self.s_noise*2-self.s_noise).normalize()*self.config.movement_speed
+            self.move = Vector2(random.random()-0.5, random.random()-0.5).normalize()*self.config.movement_speed
             drift = Vector2(0,0)
         else:
             drift = self.move
@@ -99,8 +101,9 @@ class Cockroach(Agent):
         # random drift
         self.change_image(0)
         # adding a random drift between (-s_noise, -s_noise) and (s_noise, s_noise) to the movement when wandering
-        drift = Vector2(random.random()*self.s_noise*2-self.s_noise, random.random()*self.s_noise*2-self.s_noise)
-        return drift
+        if self.move.length() < self.config.movement_speed * 0.5:
+            self.move = Vector2(random.random()-0.5, random.random()-0.5).normalize() * self.config.movement_speed
+
 
     # stay at the same position
     def still(self):
@@ -180,7 +183,7 @@ class Cockroach(Agent):
             self.leave_chance = 0
             return False
 
-        if len(list(self.in_proximity_accuracy())) > 0 and num_s < 3:
+        if len(list(self.in_proximity_accuracy())) > 0 and num_s < 2:
             self.still_time += 1
             if self.still_time > self.max_still_time:
                 x = 1
@@ -189,18 +192,20 @@ class Cockroach(Agent):
 
         # if sees a neighbour with state 'join', reduce probability of leaving
         # if num_j > 0:
-            x -= num_j
+        x -= num_j
         # if sees a neighbour with state 'leave', increase probability of leaving
         # if num_l > 0:
-            x += num_l
+        x += num_l
         # number of neighbours with state 'still' will be the scaler of the probability of leaving
         # which means more neighbours with state 'still', lower probability of leaving
         # if num_s > 0:
-            #x = x * 1/num_s
-            x -= num_s
-            x += num_w
-        if len(list(self.in_proximity_accuracy())) > 0 :
-            x = x / len(list(self.in_proximity_accuracy()))
+        #x = x * 1/num_s
+        x -= num_s
+        x += num_w
+
+        if len(list(self.in_proximity_accuracy())) > 0 and num_s > 2:
+             x = 1/num_s ** 5
+             #x = x / len(list(self.in_proximity_accuracy()))
 
         # if len(neighbors) > 0:
         #     avg_pos = self.pos
@@ -296,7 +301,7 @@ class Cockroach(Agent):
             elif self.state == "leave":
                 drift = self.leave()
             elif self.state == "wdr":
-                drift = self.wandering()
+                self.wandering()
             elif self.state == "still":
                 drift = self.still()
             
