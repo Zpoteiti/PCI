@@ -7,19 +7,27 @@ import math
 from vi.config import Config, dataclass, deserialize
 
 class AggregationConfig(Config):
-    pass
+    site1_num = 0
+    site2_num = 0
+    time = 0
 
 class Cockroach(Agent):
     config: AggregationConfig
 
     max_join_time: float = 101
     safe_distance: float = 5
-    max_velocity: float = 1
+    max_velocity: float = 10
     s_noise = 0.3
     state = "wdr"
     join_time = 0
     join_max = 0.6
     leave_chance = 0
+    site_change = False
+    site_num = 0 
+
+    def count(self):
+        with open("test.txt", "a") as f:
+            f.write(f"{self.config.site1_num},{self.config.site2_num},{self.config.time/50}\n")
 
     def separetion(self, neighbors):
         # Separation to avoid overlapping
@@ -110,7 +118,7 @@ class Cockroach(Agent):
     # if get crashed out of the site, then start wandering
     def if_leave(self): 
         # x is the calculated additonal probability of leaving the group
-        x = 0.0001
+        x = 0.00001
         # count number of neighbours with state 'still'
         num_s = 0
         for agent, len in self.in_proximity_accuracy():
@@ -135,10 +143,10 @@ class Cockroach(Agent):
 
         # if sees a neighbour with state 'join', reduce probability of leaving
         if num_j > 0:
-            x -= num_j*0.3
+            x -= num_j*0.5
         # if sees a neighbour with state 'leave', increase probability of leaving
         if num_l > 0:
-            x += num_l*0.7
+            x += num_l*0.3
 
         # add the additional probability to the base probability
         self.leave_chance += x
@@ -153,6 +161,29 @@ class Cockroach(Agent):
             return False
 
     def change_position(self):
+            if self.on_site() and not(self.site_change) and self.state == "still" :
+                self.site_change = True
+
+                site_id = self.on_site_id()
+                if site_id == 0:
+                    self.config.site1_num += 1
+                    self.site_num = 1
+                elif site_id == 1:
+                    self.config.site2_num += 1
+                    self.site_num = 2
+                print("+1")
+                self.count()
+            if not(self.on_site()) and self.site_change: #and self.state == "leave":
+                self.site_change = False
+                if self.site_num == 1:
+                    self.config.site1_num -= 1
+                    self.site_num = 0
+                elif self.site_num == 2:
+                    self.config.site2_num -= 1
+                    self.site_num = 0
+                print("-1")
+                self.count()
+
             neighbors = list(self.in_proximity_accuracy())
             drift = Vector2(0,0)
 
