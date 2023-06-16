@@ -6,10 +6,16 @@ from vi import Agent, Simulation
 import math
 from vi.config import Config, dataclass, deserialize
 
+believe_matrix = [[0.5, 0.75, 1],
+                  [0.25, 0.5, 0.75],
+                  [0.1, 0.25, 0.75]]
+
 class AggregationConfig(Config):
     site1_num = 0
     site2_num = 0
     time = 0
+
+
 
 class Cockroach(Agent):
     config: AggregationConfig
@@ -28,8 +34,10 @@ class Cockroach(Agent):
     patience = 200
     site_change = False
     site_num = 0
+    age = 0
+    age_boolean = True
 
-    def separetion(self, neighbors):
+    def separation(self, neighbors):
         # Separation to avoid overlapping
         pos = [agent.pos for agent, len in neighbors]
         drift = Vector2(0,0)
@@ -59,14 +67,19 @@ class Cockroach(Agent):
             if agent.state == "still" or agent.state == "join":
                 list_js.append(agent)
         neighbors = list_js
+        debuff = 1
         if len(neighbors) > 0:
-            debuff = 1/len(neighbors)
+            for agent in neighbors:
+                debuff += believe_matrix[self.age][agent.age]
+                print(self.age, agent.age)
+            debuff /= 1
         else:
             debuff = 0
 
         buff = self.join_time / 100
         #当agent聚集时，new agent难以从聚集处进入site
         drift = -0.7*self.move - self.move * (debuff * 3 - buff)
+        print(drift)
         # if there's more still and join neighbors less speed it gets
         if drift.length() > (self.move * -1).length():
             drift = self.move * -0.7
@@ -160,23 +173,23 @@ class Cockroach(Agent):
         num_s = 0
         for agent, lenth in self.in_proximity_accuracy():
             if agent.state == 'still':
-                num_s += 1
+                num_s += believe_matrix[self.age][agent.age]
         # count number of neighbours with state 'join'
         num_j = 0
         for agent, lenth in self.in_proximity_accuracy():
             if agent.state == 'join':
-                num_s += 1
+                num_s += believe_matrix[self.age][agent.age]
 
         # count number of neighbours with state 'leave'
         num_l = 0
         for agent, lenth in self.in_proximity_accuracy():
             if agent.state == 'leave':
-                num_s += 1
+                num_s += believe_matrix[self.age][agent.age]
 
         num_w = 0
         for agent, lenth in self.in_proximity_accuracy():
             if agent.state == 'wdr':
-                num_w += 1
+                num_w += believe_matrix[self.age][agent.age]
 
         if not self.on_site():
             self.state = 'wdr'
@@ -204,7 +217,7 @@ class Cockroach(Agent):
         x += num_w
 
         if len(list(self.in_proximity_accuracy())) > 0 and num_s > 2:
-             x = 1/num_s ** 5
+             x = 1/num_s ** 6
              #x = x / len(list(self.in_proximity_accuracy()))
 
         # if len(neighbors) > 0:
@@ -247,6 +260,7 @@ class Cockroach(Agent):
             self.config.time += 1
             #print(self.state)
             #print(self.site_change)
+            self.assign_age()
             if self.on_site() and not(self.site_change) and self.state == "still" :
                 self.site_change = True
 
@@ -315,7 +329,19 @@ class Cockroach(Agent):
                 self.move = self.move.normalize()*self.max_velocity
                     
             # move
-            self.pos += self.move + self.separetion(neighbors) + drift
+            self.pos += self.move + self.separation(neighbors) + drift
+
+    def assign_age(self):
+        number = random.random()
+        if number < 0.3:
+            self.age = 0
+        elif number < 0.5:
+            self.age = 1
+        else:
+            self.age = 2
+        #if self.age_boolean == True:
+        #    self.age = random.randint(0,2)
+        #self.age_boolean == False
 
 (
     Simulation(

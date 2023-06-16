@@ -233,7 +233,7 @@ class FlockingLive(Simulation):
                 self.move = self.move.normalize()*self.max_velocity
                     
             # move
-            self.pos += self.move + self.separetion(neighbors) + drift
+            self.pos += self.move + self.separation(neighbors) + drift
 >>>>>>> Stashed changes
 
 (
