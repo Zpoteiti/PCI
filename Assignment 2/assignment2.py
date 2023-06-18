@@ -7,9 +7,15 @@ import math
 from vi.config import Config, dataclass, deserialize
 
 class NatureConfig(Config):
-    rabbit_reproduction_rate = 0.08
-    fox_die_rate = 0.002
+    rabbit_reproduction_rate = 0.001
+    fox_die_rate = 0.001
     eat_range = 10
+    noise_strength = 0.2
+
+# adding noise to the movement to aviod agents moving in a straight line and overlapping
+# range from -noise_strength to 0.noise_strength
+def noise():
+    return Vector2(random.random()*2-1, random.random()*2-1)
 
 class Rabbit(Agent):
     config: NatureConfig
@@ -23,7 +29,9 @@ class Rabbit(Agent):
             .first()
         )
         if fox is not None:
-            self.move = - self.move.move_towards(fox.pos, self.speed)
+            # move away from the fox    
+            self.move = self.pos - fox[0].pos
+            self.move.scale_to_length(self.speed)
 
     def change_position(self):
         self.there_is_no_escape()
@@ -36,13 +44,14 @@ class Rabbit(Agent):
         if random.random() < self.config.rabbit_reproduction_rate:
             self.reproduce()
         # move
+        self.move += noise()
         self.pos += self.move
         
 
 class Fox(Agent):
     config: NatureConfig
     round = 0
-    speed = 1.5
+    speed = 2
 
     # chaseing the nearest rabbit at heighest speed
     def chase_rabbit(self):
@@ -52,7 +61,9 @@ class Fox(Agent):
             .first()
         )
         if rabbit is not None:
-            self.move = self.move.move_towards(rabbit.pos, self.speed)
+            # move towards the rabbit
+            self.move = rabbit[0].pos - self.pos
+            self.move.scale_to_length(self.speed)
 
     # eat the nearest rabbit in eat range
     def eat(self):
@@ -61,14 +72,18 @@ class Fox(Agent):
             .filter_kind(Rabbit)
             .first()
         )
-        if rabbit is not None and self.pos.distance_to(rabbit.pos) < self.config.eat_range:
-            rabbit.kill()
-            self.reproduce()         
+        # eat the rabbit and reproduce if it's in eat range
+        if rabbit is not None and self.pos.distance_to(rabbit[0].pos) < self.config.eat_range:
+            rabbit[0].kill()
+            self.reproduce()     
             
     def change_position(self):
         self.there_is_no_escape()
-        self.round += 1
+        self.round += 1      
 
+        # fox die
+        if random.random() < self.config.fox_die_rate:
+            self.kill()
         # chaseing the nearest rabbit at heighest speed
         self.chase_rabbit()
         # make sure the speed equal to max speed
@@ -76,10 +91,8 @@ class Fox(Agent):
         # eat the nearest rabbit in eat range
         self.eat()
         # move
-        self.pos += self.move        
-        # fox die
-        if random.random() < self.config.fox_die_rate:
-            self.kill()
+        self.move += noise()
+        self.pos += self.move
             
 
 (
@@ -88,12 +101,12 @@ class Fox(Agent):
             image_rotation=False,
             visualise_chunks=False,
             movement_speed=1,
-            radius=50,
-            seed=1)
+            radius=200,
+            seed=2)
     )
     # spawn agents
-    .batch_spawn_agents(40, Rabbit, images=["images/rabbit.png"])
-    .batch_spawn_agents(10, Fox, images=["images/fox.png"])
+    .batch_spawn_agents(1, Rabbit, images=["images/rabbit.png"])
+    .batch_spawn_agents(1, Fox, images=["images/fox.png"])
     
     # run simulation
     .run()
