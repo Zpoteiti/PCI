@@ -12,7 +12,9 @@ class NatureConfig(Config):
     eat_range = 10
     noise_strength = 0.2
     energy = 2000
-    energy_switch = True
+    energy_switch = True    # a switch to turn on the energy system
+
+    #below are parameters for counting population
     rabbit_num = 0
     fox_num = 0
     round = ""
@@ -24,9 +26,9 @@ class NatureConfig(Config):
 def noise():
     return Vector2(random.random()*2-1, random.random()*2-1)
 
+# draw the graph of population
 def show(population):
     plt.style.use('seaborn-whitegrid')
-
     time = []
     fox = []
     rabbit = []
@@ -48,6 +50,7 @@ def show(population):
 class Rabbit(Agent):
     config: NatureConfig
     speed = 1
+    #a parameter count the initial population
     count = True
 
 
@@ -64,11 +67,13 @@ class Rabbit(Agent):
             self.move.scale_to_length(self.speed)
 
     def change_position(self):
+        # a statement to count the initial population
         if self.config.round == "fox":
             self.config.round = "wait"
         else:
             self.config.round = "rabbit"
 
+        # a statement to count the time steps
         if self.count:
             self.count = False
             self.config.rabbit_num += 1
@@ -94,11 +99,13 @@ class Rabbit(Agent):
         population = self.config.population_history
 
         # if (rabbit != population[-1][0] or fox != population[-1][1]) and time > 1:
-        if time // 40 == 0 and time > 1:
+        if time % 20 == 0 and time > 1:
             self.config.population_history.append([rabbit,fox,time])
+            show(self.config.population_history)
 
         #oprint(self.config.population_history)
-        show(self.config.population_history)
+        # if (rabbit != population[-1][0] or fox != population[-1][1]) and time > 1:
+        #     show(self.config.population_history)
         print("rabbit:", self.config.rabbit_num, "time",self.config.time)
         
 
@@ -107,6 +114,7 @@ class Fox(Agent):
     round = 0
     speed = 2
     energy = NatureConfig.energy
+    # a parameter count the initial population
     count = True
 
     # chasing the nearest rabbit at highest speed
@@ -175,7 +183,9 @@ class Fox(Agent):
         # if (rabbit != population[-1][0] or fox != population[-1][1]) and time > 1 :
         if time % 20 == 0 and time > 1:
             self.config.population_history.append([rabbit,fox,time])
-        show(self.config.population_history)
+            show(self.config.population_history)
+        # if (rabbit != population[-1][0] or fox != population[-1][1]) and time > 1:
+        #     show(self.config.population_history)
         print("fox:", self.config.fox_num, "time",self.config.time)
         #print(self.config.population_history)
             
