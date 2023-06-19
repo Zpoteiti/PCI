@@ -101,12 +101,12 @@ class Fox(Agent):
             image_rotation=False,
             visualise_chunks=False,
             movement_speed=1,
-            radius=200,
+            radius=75,
             seed=2)
     )
     # spawn agents
-    .batch_spawn_agents(1, Rabbit, images=["images/rabbit.png"])
-    .batch_spawn_agents(1, Fox, images=["images/fox.png"])
+    .batch_spawn_agents(20, Rabbit, images=["images/rabbit.png"])
+    .batch_spawn_agents(5, Fox, images=["images/fox.png"])
     
     # run simulation
     .run()
