@@ -7,6 +7,11 @@ import matplotlib.pyplot as plt
 from vi.config import Config, dataclass, deserialize
 import polars as pl
 
+
+
+
+
+
 class NatureConfig(Config):
     # rabbit
     rabbit_max_speed: float = 1
@@ -19,6 +24,8 @@ class NatureConfig(Config):
     fox_die_rate = 0.001
     # grass
     grass_reproduction_rate: float = 0.002
+    #fox_genotype = [[]]
+
 
 
     eat_range = 10
@@ -31,6 +38,8 @@ class NatureConfig(Config):
     rabbit_num = 0
     fox_num = 0
     grass_num = 0
+
+
 
 
 # adding noise to the movement to avoid agents moving in a straight line and overlapping
@@ -51,6 +60,12 @@ class Rabbit(Agent):
     #a parameter count the initial population
     count = True
 
+    # def cave(self):
+    #     if self.on_site():
+    #         if hide > threshhold:
+    #             self.state = "in cave"
+
+
     def separetion(self, neighbors):
         pos = [agent.pos for agent, len in neighbors]
         drift = Vector2(0, 0)
@@ -67,7 +82,9 @@ class Rabbit(Agent):
 
     def update(self):
         self.save_data("type", "rabbit")
-        self.save_data("num", self.config.rabbit_num)
+        self.save_data("rabbit", self.config.rabbit_num)
+        self.save_data("fox", None)
+        self.save_data("grass", None)
         self.save_data("energy", "None")
 
     # run away from the nearest fox at highest speed
@@ -112,6 +129,7 @@ class Rabbit(Agent):
     def eat(self, grass):
         if grass is not None and self.pos.distance_to(grass[0].pos) < self.config.eat_range:
             grass[0].kill()
+            self.config.grass_num -= 1
             self.hungry_counter = 0
 
     def get_pregnent(self):
@@ -128,6 +146,7 @@ class Rabbit(Agent):
                 self.reproduce()
             self.pregnent_counter = 0
             self.pregnent = False
+
 
     def change_position(self):
         if self.count:
@@ -183,7 +202,9 @@ class Fox(Agent):
 
     def update(self):
         self.save_data("type", "fox")
-        self.save_data("num", self.config.fox_num)
+        self.save_data("rabbit", None)
+        self.save_data("grass", None)
+        self.save_data("fox", self.config.fox_num)
         self.save_data("energy",self.energy)
 
 
@@ -224,8 +245,8 @@ class Fox(Agent):
 
         self.there_is_no_escape()
         self.energy -= 1
-        print(self.energy)
-        print(type(self.energy))
+        #print(self.energy)
+        #print(type(self.energy))
 
         if self.energy < 0 and self.config.energy_switch:
             self.kill()
@@ -251,7 +272,9 @@ class Grass(Agent):
 
     def update(self):
         self.save_data("type", "grass")
-        self.save_data("num", self.config.grass_num)
+        self.save_data("rabbit", None)
+        self.save_data("fox", None)
+        self.save_data("grass", self.config.grass_num)
         self.save_data("energy","nope")
 
     def change_position(self):
@@ -267,6 +290,22 @@ class Grass(Agent):
         if random.random() < self.config.grass_reproduction_rate:
             self.reproduce()
             self.config.grass_num += 1
+
+# class Cave(Agent):
+#
+#     config: NatureConfig
+#
+#     def update(self):
+#         self.save_data("type", None)
+#         self.save_data("rabbit", None)
+#         self.save_data("fox", None)
+#         self.save_data("grass", self.config.grass_num)
+#         self.save_data("energy","nope")
+#
+#     def change_position(self):
+#         pass
+
+
 
 
 
@@ -287,6 +326,8 @@ def run() -> pl.DataFrame:
         .batch_spawn_agents(20, Rabbit, images=["images/rabbit.png"])
         .batch_spawn_agents(5, Fox, images=["images/fox.png"])
         .batch_spawn_agents(100, Grass, images=["images/grass.png"])
+        #.batch_spawn_agents(3, Cave, ["images/triangle@50px.png"])
+        #.spawn_site("images/triangle@50px.png", x=300, y=300)
 
         # run simulation
         .run()
