@@ -161,9 +161,13 @@ class Rabbit(Agent):
                 self.states.append("pregnant")
 
         if "pregnant" in self.states:
+            self.change_image(1)
+
+        if "pregnant" in self.states:
             self.pregnant_counter += 1
             if self.pregnant_counter > self.config.rabbit_pregnant_time:
                 self.states.remove("pregnant")
+                self.change_image(0)
                 for i in range(random.randint(3, 6)):
                     self.reproduce()
                     self.config.rabbit_num += 1
@@ -420,7 +424,7 @@ def run() -> pl.DataFrame:
                 duration=2000)
         )
         # spawn agents
-        .batch_spawn_agents(50, Rabbit, images=["images/rabbit.png"])
+        .batch_spawn_agents(50, Rabbit, images=["images/rabbit.png","images/rabbit_pregnant.png"])
         .batch_spawn_agents(5, Fox, images=["images/fox.png"])
         .batch_spawn_agents(100, Grass, images=["images/grass.png"])
         #.batch_spawn_agents(3, Cave, ["images/triangle@50px.png"])
