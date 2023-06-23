@@ -70,7 +70,7 @@ class Rabbit(Agent):
     count = True
     hide_prob = 0.002
     leave_prob = 0.002
-    #motivation = Vector2(0, 0)
+    motivation = Vector2(0, 0)
 
     # def cave(self):
     #     if self.on_site():
@@ -102,9 +102,10 @@ class Rabbit(Agent):
 
     # run away from the nearest fox at highest speed
     def run_away_from_fox(self, fox):
-            motivation = self.pos - fox[0].pos
-            #self.motivation.scale_to_length(self.speed)
-            return motivation
+        if 'in danger' in self.states:
+            motivation = (self.pos - fox[0].pos) * 3
+            motivation = motivation.scale_to_length(self.speed)
+        return motivation
 
 
         # when not hungry, go to average position of nearby grasses
