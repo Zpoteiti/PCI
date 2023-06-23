@@ -21,6 +21,7 @@ class NatureConfig(Config):
 
     rabbit_starving_thershold: float = 605
     rabbit_reproduction_rate: float = 0.005
+    rabbit_reproduction_limit: int = 7
 
     # fox
     fox_die_rate: float = 0.005
@@ -29,14 +30,15 @@ class NatureConfig(Config):
     fox_reproduction_rate: float = 0.7
 
     fox_pregnant_time: int = 100
-    fox_starving_thershold: float = 700
+    fox_starving_thershold: float = 1000
     #fox_die_rate = 0.001
     # grass
     grass_reproduction_rate: float = 0.005
     #fox_genotype = [[]]
 
-    adult_threshold = 0.5 * rabbit_starving_thershold
-    hungry_thershold: float = 0.4
+
+    adult_threshold = 0.2 * rabbit_starving_thershold
+    hungry_thershold: float = 0.2
     eat_range = 5
     safe_distance: float = 10
     noise_strength = 0.2
@@ -70,7 +72,7 @@ class Rabbit(Agent):
     count = True
     hide_prob = 0.002
     leave_prob = 0.002
-    motivation = Vector2(0, 0)
+    #motivation = Vector2(0, 0)
 
     # def cave(self):
     #     if self.on_site():
@@ -102,10 +104,9 @@ class Rabbit(Agent):
 
     # run away from the nearest fox at highest speed
     def run_away_from_fox(self, fox):
-        if 'in danger' in self.states:
-            motivation = (self.pos - fox[0].pos) * 3
-            motivation = motivation.scale_to_length(self.speed)
-        return motivation
+            motivation = self.pos - fox[0].pos
+            #self.motivation.scale_to_length(self.speed)
+            return motivation
 
 
         # when not hungry, go to average position of nearby grasses
@@ -164,7 +165,8 @@ class Rabbit(Agent):
 
     def pregnant(self,near_rabbits):
         for i in near_rabbits:
-            if "fine" in i[0].states and "pregnant" not in i[0].states and random.random() < self.config.rabbit_reproduction_rate and "fine" in self.states and "pregnant" not in self.states:
+            if "fine" in i[0].states and "pregnant" not in i[0].states and random.random() < self.config.rabbit_reproduction_rate \
+                    and "fine" in self.states and "pregnant" not in self.states and len(near_rabbits) < self.config.rabbit_reproduction_limit:
                 self.states.append("pregnant")
 
         if "pregnant" in self.states:
@@ -173,7 +175,7 @@ class Rabbit(Agent):
                 self.states.remove("pregnant")
                 for i in range(random.randint(3, 6)):
                     self.reproduce()
-                    self.config.rabbit_num += 1
+                    #self.config.rabbit_num += 1
 
     #cave related behaviors
     def hide(self):
@@ -243,7 +245,7 @@ class Rabbit(Agent):
 
     def hiding(self,caves):
         #print(caves[0][1])
-        print(caves)
+        #print(caves)
         motivation = Vector2(0,0)
         if caves is not None and caves[1] < 20 and "hiding" not in self.states and "go hide" in self.states:
             self.states.append("hiding")
@@ -285,6 +287,7 @@ class Rabbit(Agent):
         self.there_is_no_escape()
         self.hungry_counter += 1
         # self.tired()
+        print("rr",self.hungry_counter)
 
         #basic behaviors
         self.separetion(nearby_rabbits)
@@ -340,11 +343,11 @@ class Rabbit(Agent):
         # if "go hide" in self.states:
         #     motivation = Vector2(0,0)
         # move
-        print("momo",motivation)
-        print("MOMO",self.move)
+        #print("momo",motivation)
+        #print("MOMO",self.move)
         self.move += motivation #+ noise()
         if self.move.length() > 0:
-            print("MM",self.move)
+            #print("MM",self.move)
             self.move.scale_to_length(self.speed)
         #print("rm",motivation)
         self.pos += self.move
@@ -415,8 +418,10 @@ class Fox(Agent):
         # eat the rabbit and reproduce if it's in eat range
         if rabbit is not None and self.pos.distance_to(rabbit[0].pos) < self.config.eat_range:
             rabbit[0].kill()
+            print("eat rr")
             self.config.rabbit_num -= 1
             self.hungry_counter = 0
+            print(self.hungry_counter)
             if "pregnant" not in self.states and random.random() < self.config.fox_reproduction_rate:
                 self.states.append("pregnant")
 
@@ -437,7 +442,8 @@ class Fox(Agent):
                 self.states.remove("pregnant")
                 for i in range(1):
                     self.reproduce()
-                self.config.fox_num += 2
+                    #self.config.fox_num += 1
+
 
     def out_of_cave(self):
         caves = (
@@ -463,6 +469,8 @@ class Fox(Agent):
         if self.count:
             self.count = False
             self.config.fox_num += 1
+            #hungry_counter = 0
+
 
         motivation = Vector2(0,0)
 
@@ -473,6 +481,7 @@ class Fox(Agent):
 
         self.there_is_no_escape()
         self.hungry_counter += 1
+        print("ff",self.hungry_counter)
         self.hungry()
         self.separetion(near_foxes)
 
@@ -531,9 +540,9 @@ class Grass(Agent):
             self.round += 1
             self.pos += Vector2(random.randint(-100, 100), random.randint(-100, 100))
         # grass reproduce
-        if random.random() < self.config.grass_reproduction_rate and len(grass) < 10:
+        if random.random() < self.config.grass_reproduction_rate and len(grass) < 10 and self.config.grass_num < 1000:
             self.reproduce()
-            self.config.grass_num += 1
+            #self.config.grass_num += 1
 
 class Cave(Agent):
 
@@ -541,10 +550,10 @@ class Cave(Agent):
     states = []
 
     def update(self):
-        self.save_data("type", None)
+        self.save_data("type", "cave")
         self.save_data("rabbit", None)
         self.save_data("fox", None)
-        self.save_data("grass", self.config.grass_num)
+        self.save_data("grass", None)
         self.save_data("energy","nope")
 
     def full(self):
@@ -580,7 +589,7 @@ def run() -> pl.DataFrame:
                 movement_speed=1,
                 radius=50,
                 seed=2,
-                duration=2000)
+                duration=1500)
         )
         # spawn agents
         .batch_spawn_agents(100, Rabbit, images=["images/rabbit.png"])
@@ -592,7 +601,7 @@ def run() -> pl.DataFrame:
         # run simulation
         .run()
         .snapshots
-        .groupby(["type", "frame"],maintain_order=True).max()
+        .groupby(["type","frame","rabbit","fox","grass"],maintain_order=True).count()
     )
 
 
