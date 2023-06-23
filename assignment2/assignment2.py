@@ -168,11 +168,13 @@ class Rabbit(Agent):
             if "fine" in i[0].states and "pregnant" not in i[0].states and random.random() < self.config.rabbit_reproduction_rate \
                     and "fine" in self.states and "pregnant" not in self.states and len(near_rabbits) < self.config.rabbit_reproduction_limit:
                 self.states.append("pregnant")
+                self.change_image(1)
 
         if "pregnant" in self.states:
             self.pregnant_counter += 1
             if self.pregnant_counter > self.config.rabbit_pregnant_time:
                 self.states.remove("pregnant")
+                self.change_image(0)
                 for i in range(random.randint(3, 6)):
                     self.reproduce()
                     #self.config.rabbit_num += 1
@@ -440,6 +442,7 @@ class Fox(Agent):
             self.pregnant_counter += 1
             if self.pregnant_counter > self.config.fox_pregnant_time:
                 self.states.remove("pregnant")
+
                 for i in range(1):
                     self.reproduce()
                     #self.config.fox_num += 1
@@ -592,7 +595,7 @@ def run() -> pl.DataFrame:
                 duration=1500)
         )
         # spawn agents
-        .batch_spawn_agents(100, Rabbit, images=["images/rabbit.png"])
+        .batch_spawn_agents(100, Rabbit, images=["images/rabbit.png","images/rabbit_pregnant.png"])
         .batch_spawn_agents(20, Fox, images=["images/fox.png"])
         .batch_spawn_agents(100, Grass, images=["images/grass.png"])
         .batch_spawn_agents(3, Cave, ["images/cave.png"])
