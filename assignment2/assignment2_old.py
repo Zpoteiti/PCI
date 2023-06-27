@@ -17,19 +17,19 @@ class NatureConfig(Config):
     # rabbit
     rabbit_max_speed: float = 1.5
     #rabbit_hungry_thershold: float = 50
-    rabbit_pregnant_time : int = 200
+    rabbit_pregnant_time : int = 150
 
-    rabbit_starving_thershold: float = 250
-    rabbit_reproduction_rate: float = 0.7
+    rabbit_starving_thershold: float = 355
+    rabbit_reproduction_rate: float = 0.6
     #rabbit_reproduction_limit: int = 7
 
     # fox
-    fox_die_rate: float = 0.001
-    fox_max_speed: float = 2.5
+    fox_die_rate: float = 0.002
+    fox_max_speed: float = 2
 
-    fox_reproduction_rate: float = 0.5
+    fox_reproduction_rate: float = 0.4
 
-    fox_pregnant_time: int = 20
+    fox_pregnant_time: int = 100
     fox_starving_thershold: float = 250
     #fox_die_rate = 0.001
     # grass
@@ -39,12 +39,10 @@ class NatureConfig(Config):
 
     adult_threshold = 0.2 * rabbit_starving_thershold
     hungry_thershold: float = 0.2
-    eat_range = 10
+    eat_range = 5
     safe_distance: float = 10
     noise_strength = 0.2
     energy_switch = True    # a switch to turn on the energy check
-
-    grass_reproduction_rate: float = 0.01
 
     #below are parameters for counting population
     rabbit_num = 0
@@ -52,7 +50,7 @@ class NatureConfig(Config):
     grass_num = 0
 
 
-
+    grass_reproduction_rate: float = 1/(grass_num+100)
 
 
 
@@ -172,51 +170,50 @@ class Rabbit(Agent):
 
 
 
-    # cave related behaviors
-    def hide(self):
-        caves = (
-            self.in_proximity_accuracy()
-            .filter_kind(Cave)
-            .first()
-        )
-        if caves is not None and "full" not in caves[0].states:
-            #print(caves)
-            if caves[1] > 20 and (random.random() < self.hide_prob or "in danger" in self.states):
-                if "go hide" not in self.states:
-                    self.states.append("go hide")
-            else:
-                if "go hide" in self.states:
-                    pass#self.states.remove("go hide")
-        else:
-            if "go hide" in self.states:
-                self.states.remove("go hide")
-
-        if "go hide" in self.states:
-            self.move = caves[0].pos - self.pos
-            self.move.scale_to_length(self.speed)
-
-
-    def rejec_by_cave(self,cave):
-        if cave is not None and cave[1] < 31 and "go hide" not in self.states and "hiding" not in self.states:
-            motivation = (self.pos - cave[0].pos) * 100
-            # move.scale_to_length(self.speed)
-            #print("reject")
-        else:
-            motivation = Vector2(0, 0)
-
-        return motivation
-
-
-    def leave(self,cave):
-        if random.random() < self.leave_prob and "hiding" in self.states and "leaving" not in self.states:
-            self.states.append("leaving")
-        if "leaving" in self.states:
-            motivation = (self.pos - cave[0].pos)
-            motivation.scale_to_length(self.speed)
-        else:
-            motivation = Vector2(0, 0)
-
-        return motivation
+    #cave related behaviors
+    # def hide(self):
+    #     caves = (
+    #         self.in_proximity_accuracy()
+    #         .filter_kind(Cave)
+    #         .first()
+    #     )
+    #     if caves is not None and "full" not in caves[0].states:
+    #         #print(caves)
+    #         if caves[1] > 20 and (random.random() < self.hide_prob or "in danger" in self.states):
+    #             if "go hide" not in self.states:
+    #                 self.states.append("go hide")
+    #         else:
+    #             if "go hide" in self.states:
+    #                 pass#self.states.remove("go hide")
+    #     else:
+    #         if "go hide" in self.states:
+    #             self.states.remove("go hide")
+    #
+    #     if "go hide" in self.states:
+    #         self.move = caves[0].pos - self.pos
+    #         self.move.scale_to_length(self.speed)
+    #
+    # def rejec_by_cave(self,cave):
+    #     if cave is not None and cave[1] < 31 and "go hide" not in self.states and "hiding" not in self.states:
+    #         motivation = (self.pos - cave[0].pos) * 100
+    #         # move.scale_to_length(self.speed)
+    #         print("reject")
+    #     else:
+    #         motivation = Vector2(0, 0)
+    #
+    #     return motivation
+    #
+    #
+    # def leave(self,cave):
+    #     if random.random() < self.leave_prob and "hiding" in self.states and "leaving" not in self.states:
+    #         self.states.append("leaving")
+    #     if "leaving" in self.states:
+    #         motivation = (self.pos - cave[0].pos)
+    #         motivation.scale_to_length(self.speed)
+    #     else:
+    #         motivation = Vector2(0, 0)
+    #
+    #     return motivation
 
 
     # state functions
@@ -243,23 +240,23 @@ class Rabbit(Agent):
         if self.growth > self.config.adult_threshold and "child" in self.states:
             self.states.remove("child")
 
-    def hiding(self,caves):
-        #print(caves[0][1])
-        #print(caves)
-        motivation = Vector2(0,0)
-        if caves is not None and caves[1] < 20 and "hiding" not in self.states and "go hide" in self.states:
-            self.states.append("hiding")
-            self.states.remove("go hide")
-        elif (caves is None or caves[1] > 20) and "hiding" in self.states :
-            self.states.remove("hiding")
-            if "leaving" in self.states:
-                self.states.remove("leaving")
-
-        if "hiding" in self.states and caves[1] > 18 and "leaving" not in self.states:
-            motivation = caves[0].pos - self.pos
-            #self.motivation = Vector2(0,0)
-            motivation.scale_to_length(1000000)
-        return motivation
+    # def hiding(self,caves):
+    #     #print(caves[0][1])
+    #     #print(caves)
+    #     motivation = Vector2(0,0)
+    #     if caves is not None and caves[1] < 20 and "hiding" not in self.states and "go hide" in self.states:
+    #         self.states.append("hiding")
+    #         self.states.remove("go hide")
+    #     elif (caves is None or caves[1] > 20) and "hiding" in self.states :
+    #         self.states.remove("hiding")
+    #         if "leaving" in self.states:
+    #             self.states.remove("leaving")
+    #
+    #     if "hiding" in self.states and caves[1] > 18 and "leaving" not in self.states:
+    #         motivation = caves[0].pos - self.pos
+    #         #self.motivation = Vector2(0,0)
+    #         motivation.scale_to_length(1000000)
+    #     return motivation
 
 
 
@@ -291,9 +288,9 @@ class Rabbit(Agent):
 
         #basic behaviors
         self.separetion(nearby_rabbits)
-        self.hide()
-        motivation += self.leave(near_cave)
-        motivation += self.rejec_by_cave(near_cave)
+        # self.hide()
+        # motivation += self.leave(near_cave)
+        # motivation += self.rejec_by_cave(near_cave)
 
 
 
@@ -302,9 +299,7 @@ class Rabbit(Agent):
         self.danger(nearest_fox)
         if "child" in self.states:
             self.grow_up()
-        motivation += self.hiding(near_cave)
-        if "in danger" not in self.states and "lock" in self.states:
-            self.states.remove("lock")
+        # motivation += self.hiding(near_cave)
 
 
         # senarios
@@ -334,7 +329,7 @@ class Rabbit(Agent):
             if x is not None:
                 motivation += x
             ##### we can set a danger mode speed as well
-
+        #print(self.states)
 
         # make sure the speed equal to max speed
         if motivation.length() > 0:
@@ -348,7 +343,7 @@ class Rabbit(Agent):
         #print("momo",motivation)
         #print("MOMO",self.move)
         self.move += motivation #+ noise()
-        if self.move.length() > 0.1:
+        if self.move.length() > 0:
             #print("MM",self.move)
             self.move.scale_to_length(self.speed)
         #print("rm",self.move.length())
@@ -370,7 +365,7 @@ class Fox(Agent):
         self.save_data("rabbit", None)
         self.save_data("grass", None)
         self.save_data("fox", self.config.fox_num)
-
+        # self.save_data("energy",self.hungry_counter)
 
     def separetion(self, neighbors):
         pos = [agent.pos for agent, len in neighbors]
@@ -398,17 +393,27 @@ class Fox(Agent):
 
         if rabbit is not None and "hiding" not in rabbit[0].states:
             # move towards the rabbit
+            #print("rrs",rabbit[0].states)
             motivation = rabbit[0].pos - self.pos
+            #print("fffm",motivation)
+            if "hungry" in self.states:
+                motivation.scale_to_length(self.config.fox_max_speed)
+            else:
+                motivation.scale_to_length(self.speed)
         else:
             motivation = Vector2(0,0)
 
         return motivation
 
     # eat the nearest rabbit in eat range
-    def eat(self,rabbit):
+    def eat(self):
+        rabbit = (
+            self.in_proximity_accuracy()
+            .filter_kind(Rabbit)
+            .first()
+        )
         # eat the rabbit and reproduce if it's in eat range
-        if self.pos.distance_to(rabbit[0].pos) < self.config.eat_range:
-            rabbit[0].states.append("lock")
+        if rabbit is not None and self.pos.distance_to(rabbit[0].pos) < self.config.eat_range:
             rabbit[0].kill()
             #print("eat rr")
             self.config.rabbit_num -= 1
@@ -438,20 +443,20 @@ class Fox(Agent):
                     #self.config.fox_num += 1
 
 
-    def out_of_cave(self):
-        caves = (
-            self.in_proximity_accuracy()
-            .filter_kind(Cave)
-            .first()
-        )
-
-        if caves is not None and caves[1] < 31:
-            motivation = (self.pos - caves[0].pos)*100
-            #move.scale_to_length(self.speed)
-        else:
-            motivation = Vector2(0,0)
-
-        return motivation
+    # def out_of_cave(self):
+    #     caves = (
+    #         self.in_proximity_accuracy()
+    #         .filter_kind(Cave)
+    #         .first()
+    #     )
+    #
+    #     if caves is not None and caves[1] < 31:
+    #         motivation = (self.pos - caves[0].pos)*100
+    #         #move.scale_to_length(self.speed)
+    #     else:
+    #         motivation = Vector2(0,0)
+    #
+    #     return motivation
 
 
 
@@ -468,8 +473,9 @@ class Fox(Agent):
         motivation = Vector2(0,0)
 
 
-        near_foxes = list(self.in_proximity_accuracy().filter_kind(Fox))
-        near_rabbit = self.in_proximity_accuracy().filter_kind(Rabbit).first()
+        near_foxes = list(self.in_proximity_accuracy()
+                        .filter_kind(Fox)
+                      )
 
         self.there_is_no_escape()
         self.hungry_counter += 1
@@ -492,12 +498,10 @@ class Fox(Agent):
         # make sure the speed equal to max speed
         self.move.scale_to_length(self.speed)
         # eat the nearest rabbit in eat range
-        if near_rabbit is not None :
-            if "lock" not in near_rabbit[0].states:
-                self.eat(near_rabbit)
+        self.eat()
         # move
 
-        motivation += self.out_of_cave()
+        # motivation += self.out_of_cave()
 
 
         if motivation.length() > 0:
@@ -505,10 +509,7 @@ class Fox(Agent):
             self.move += motivation + noise()
 
         #print("fm",motivation)
-        if "hungry" in self.states:
-            self.move.scale_to_length(self.config.fox_max_speed)
-        else:
-            self.move.scale_to_length(self.speed)
+        self.move.scale_to_length(self.speed)
         # print(self.states)
         # print("motivation", motivation.length())
         # print("ff",self.move.length())
@@ -516,7 +517,7 @@ class Fox(Agent):
 
 class Grass(Agent):
     config: NatureConfig
-    # round = 1
+    round = 1
     count = True
 
     def update(self):
@@ -531,42 +532,19 @@ class Grass(Agent):
             self.count = False
             self.config.grass_num += 1
 
-            if self.pos.x < 50 and self.pos.y < 50: #left up corner
-                self.pos += Vector2(random.randint(0, 50), random.randint(0, 50))
-            elif self.pos.x < 50 and self.pos.y > 50 and self.pos.y < 700:  # left edge
-                self.pos += Vector2(random.randint(0, 50), random.randint(-50, 50))
-            elif self.pos.x < 50 and self.pos.y > 700:  # left down corner
-                self.pos += Vector2(random.randint(0, 50), random.randint(-50, 0))
-
-            elif self.pos.x > 700 and self.pos.y > 700: #right down corner
-                self.pos += Vector2(random.randint(-50, 0), random.randint(-50, 0))
-            elif self.pos.x > 700 and self.pos.y > 50 and self.pos.y < 700:  # right edge
-                self.pos += Vector2(random.randint(-50, 0), random.randint(-50, 50))
-            elif self.pos.x > 700 and self.pos.y < 50:  # right up corner
-                self.pos += Vector2(random.randint(-50, 0), random.randint(0, 50))
-
-            elif self.pos.x > 50 and self.pos.x < 700 and self.pos.y < 50: # upper edge
-                self.pos += Vector2(random.randint(-50, 50), random.randint(0, 50))
-            elif self.pos.x > 50 and self.pos.x < 700 and self.pos.y > 700:  # down edge
-                self.pos += Vector2(random.randint(-50, 50), random.randint(-50, 0))
-            else:
-                self.pos += Vector2(random.randint(-50, 50), random.randint(-50, 50))
-
-
         grass = list(self.in_proximity_accuracy()
                         .filter_kind(Grass)
                       )
 
         # grass grow away from their parents at a random position with distance (+/-) 5 from their parents
-        # if self.round == 1:
-        #     self.round += 1
-
+        if self.round == 1:
+            self.round += 1
+            self.pos += Vector2(random.randint(-100, 100), random.randint(-100, 100))
         # grass reproduce
-        if random.random() < self.config.grass_reproduction_rate and len(grass) < 10: #and self.config.grass_num < 1000:
+        if random.random() < self.config.grass_reproduction_rate and len(grass) < 20 and self.config.grass_num < 1000:
             self.reproduce()
             #self.config.grass_num += 1
-        #print(self.config.grass_reproduction_rate)
-        #print(self.config.grass_reproduction_rate)
+        print(self.config.grass_reproduction_rate)
 
 class Cave(Agent):
 
@@ -585,7 +563,7 @@ class Cave(Agent):
         hiding_rabbits = list(self.in_proximity_accuracy()
                           .filter_kind(Rabbit)
                           )
-        if len(hiding_rabbits) < 8 and "full" in self.states:
+        if len(hiding_rabbits) < 5 and "full" in self.states:
             self.states.remove("full")
         else:
             for i in hiding_rabbits:
@@ -613,19 +591,19 @@ def run() -> pl.DataFrame:
                 movement_speed=1,
                 radius=50,
                 seed=2,
-                duration=2500)
+                duration=2000)
         )
         # spawn agents
         .batch_spawn_agents(100, Rabbit, images=["images/rabbit.png"])
         .batch_spawn_agents(20, Fox, images=["images/fox.png"])
         .batch_spawn_agents(100, Grass, images=["images/grass.png"])
-        .batch_spawn_agents(3, Cave, ["images/cave.png"])
-        #.spawn_site("images/triangle@50px.png", x=750, y=750)
+        #.batch_spawn_agents(3, Cave, ["images/cave.png"])
+        #.spawn_site("images/triangle@50px.png", x=300, y=300)
 
         # run simulation
         .run()
         .snapshots
-        .groupby(["type","frame","rabbit","fox","grass"],maintain_order=True).count() #
+        .groupby(["type","frame","rabbit","fox","grass"],maintain_order=True).count()
     )
 
 
